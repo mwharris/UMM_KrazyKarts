@@ -23,20 +23,26 @@ private:
 	// Mass of car in kg
 	UPROPERTY(EditAnywhere)
 	float Mass = 1000;
-
 	// The force applied to the car when the throttle is down
 	UPROPERTY(EditAnywhere)
 	float MaxDrivingForce = 10000;
-	
-	// The number of degrees rotate per second at full control throw (degree/s)
+	// The amount of drag applied to the car when calculating Air Resistance (kg/m)
 	UPROPERTY(EditAnywhere)
-	float MaxDegPerSecond = 90;
+	float DragCoefficient = 16;
+	// The rolling resistance that our tires exert.
+	UPROPERTY(EditAnywhere)
+	float RollingResistanceCoefficient = 0.015f;
+	// The minimum radius of our turning circle at full turn (meters).
+	UPROPERTY(EditAnywhere)
+	float MinTurningRadius = 10;
 
 	FVector Velocity;	// m/s
 	float Throttle = 0;
 	float SteeringThrow = 0;
 
 	void ApplyRotation(float DeltaTime);
+	FVector CalculateAirResistance();
+	FVector CalculateRollingResistance();
 	void UpdateLocationViaVelocity(float DeltaTime);
 
 };
