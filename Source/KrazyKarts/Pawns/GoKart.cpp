@@ -1,5 +1,6 @@
 #include "KrazyKarts/Pawns/GoKart.h"
 #include "Engine/World.h"
+#include "DrawDebugHelpers.h"
 
 AGoKart::AGoKart()
 {
@@ -33,6 +34,8 @@ void AGoKart::Tick(float DeltaTime)
 	// Apply rotation and movement based on Velocity
 	ApplyRotation(DeltaTime);
 	UpdateLocationViaVelocity(DeltaTime);
+	// Display our replication Role
+	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
 }
 
 void AGoKart::ApplyRotation(float DeltaTime) 
@@ -85,9 +88,44 @@ FVector AGoKart::CalculateRollingResistance()
 void AGoKart::MoveForward(float Val) 
 {
 	Throttle = Val;
+	Server_MoveForward(Val);	
+}
+void AGoKart::Server_MoveForward_Implementation(float Val) 
+{
+	Throttle = Val;
+}
+bool AGoKart::Server_MoveForward_Validate(float Val) 
+{
+	return FMath::Abs(Val) <= 1;
 }
 
 void AGoKart::MoveRight(float Val) 
 {
 	SteeringThrow = Val;
+	Server_MoveRight(Val);
+}
+void AGoKart::Server_MoveRight_Implementation(float Val) 
+{
+	SteeringThrow = Val;
+}
+bool AGoKart::Server_MoveRight_Validate(float Val) 
+{
+	return FMath::Abs(Val) <= 1;
+}
+
+FString AGoKart::GetEnumText(ENetRole ActorRole) 
+{
+	switch (ActorRole)
+	{
+	case ROLE_None:
+		return "None";
+	case ROLE_SimulatedProxy:
+		return "SimulatedProxy";
+	case ROLE_AutonomousProxy:
+		return "AutonomousProxy";
+	case ROLE_Authority:
+		return "Authority";
+	default:
+		return "ERROR";
+	}
 }

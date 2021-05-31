@@ -13,6 +13,12 @@ public:
 	AGoKart();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_MoveForward(float Val);
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_MoveRight(float Val);
+	
 	void MoveForward(float Val);
 	void MoveRight(float Val);
 
@@ -44,5 +50,6 @@ private:
 	FVector CalculateAirResistance();
 	FVector CalculateRollingResistance();
 	void UpdateLocationViaVelocity(float DeltaTime);
+	FString GetEnumText(ENetRole Role);
 
 };
