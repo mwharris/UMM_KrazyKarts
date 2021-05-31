@@ -42,6 +42,11 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MinTurningRadius = 10;
 
+	UPROPERTY(Replicated)	
+	FVector ReplicatedLocation;
+	UPROPERTY(Replicated)	
+	FRotator ReplicatedRotation;
+
 	FVector Velocity;	// m/s
 	float Throttle = 0;
 	float SteeringThrow = 0;

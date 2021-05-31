@@ -1,15 +1,24 @@
 #include "KrazyKarts/Pawns/GoKart.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "Net/UnrealNetwork.h"
 
 AGoKart::AGoKart()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 }
 
 void AGoKart::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AGoKart, ReplicatedLocation);
+    DOREPLIFETIME(AGoKart, ReplicatedRotation);
 }
 
 void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -22,19 +31,32 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// Create our "driving force" by taking our input * driving force * forward
-	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
-	// Calculate and apply air resistance to our driving force
-	Force += CalculateAirResistance();
-	Force += CalculateRollingResistance();
-	// Find Acceleration using F = M/A
-	FVector Acceleration = Force / Mass;
-	// Find Velocity based on our Acceleration and time traveled Dv = a * Dt
-	Velocity += Acceleration * DeltaTime;
-	// Apply rotation and movement based on Velocity
-	ApplyRotation(DeltaTime);
-	UpdateLocationViaVelocity(DeltaTime);
-	// Display our replication Role
+	// If we're the Server - calculate and set our position and rotations
+	if (HasAuthority()) 
+	{
+		// Create our "driving force" by taking our input * driving force * forward
+		FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+		// Calculate and apply air resistance to our driving force
+		Force += CalculateAirResistance();
+		Force += CalculateRollingResistance();
+		// Find Acceleration using F = M/A
+		FVector Acceleration = Force / Mass;
+		// Find Velocity based on our Acceleration and time traveled Dv = a * Dt
+		Velocity += Acceleration * DeltaTime;
+		// Perform movement and rotations
+		UpdateLocationViaVelocity(DeltaTime);
+		ApplyRotation(DeltaTime);
+		// Update replicated position/rotation for the Clients
+		ReplicatedLocation = GetActorLocation();
+		ReplicatedRotation = GetActorRotation();
+	}
+	// If we're the Client, simply update our position/rotation based on the Server
+	else
+	{
+		SetActorLocation(ReplicatedLocation);
+		SetActorRotation(ReplicatedRotation);
+	}
+	// Display our replication Role for testing purposes
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
 }
 
