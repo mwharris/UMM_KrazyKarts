@@ -42,14 +42,17 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MinTurningRadius = 10;
 
+	UPROPERTY(ReplicatedUsing=OnRep_ReplicatedTransform)	
+	FTransform ReplicatedTransform;
 	UPROPERTY(Replicated)	
-	FVector ReplicatedLocation;
+	FVector Velocity;
 	UPROPERTY(Replicated)	
-	FRotator ReplicatedRotation;
-
-	FVector Velocity;	// m/s
 	float Throttle = 0;
+	UPROPERTY(Replicated)	
 	float SteeringThrow = 0;
+
+	UFUNCTION()
+	void OnRep_ReplicatedTransform();
 
 	void ApplyRotation(float DeltaTime);
 	FVector CalculateAirResistance();
