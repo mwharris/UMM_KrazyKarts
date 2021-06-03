@@ -21,8 +21,7 @@ void AGoKart::BeginPlay()
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(AGoKart, ReplicatedTransform);
-    DOREPLIFETIME(AGoKart, Velocity);
+    DOREPLIFETIME(AGoKart, ServerState);
     DOREPLIFETIME(AGoKart, Throttle);
     DOREPLIFETIME(AGoKart, SteeringThrow);
 }
@@ -37,6 +36,16 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	// Client-only - Send Move command to Server
+	if (IsLocallyControlled()) 
+	{
+		FGoKartMove CurrentMove;
+		CurrentMove.Throttle = Throttle;
+		CurrentMove.SteeringThrow = SteeringThrow;
+		CurrentMove.DeltaTime = DeltaTime;
+		// TODO: CurrentMove.Timestamp = FDateTime::Now();
+		Server_Move(CurrentMove);
+	}
 	// Create our "driving force" by taking our input * driving force * forward
 	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
 	// Calculate and apply air resistance to our driving force
@@ -49,18 +58,15 @@ void AGoKart::Tick(float DeltaTime)
 	// Perform movement and rotations
 	UpdateLocationViaVelocity(DeltaTime);
 	ApplyRotation(DeltaTime);
-	// If we're the Server - update our replicated transform for the Clients
+	// If we're the Server - update ServerState to send to Clients
 	if (HasAuthority()) 
 	{
-		ReplicatedTransform = GetActorTransform();
+		ServerState.Transform = GetActorTransform();
+		ServerState.Velocity = Velocity;
+		// TODO: ServerState.LastMove = ?;
 	}
 	// Display our replication Role for testing purposes
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
-}
-
-void AGoKart::OnRep_ReplicatedTransform() 
-{
-	SetActorTransform(ReplicatedTransform);
 }
 
 void AGoKart::ApplyRotation(float DeltaTime) 
@@ -110,32 +116,35 @@ FVector AGoKart::CalculateRollingResistance()
 	return -Velocity.GetSafeNormal() * RollingResistanceCoefficient * NormalForce;
 }
 
+// Client - set our Transform and Velocity from Server response
+void AGoKart::OnRep_ServerState() 
+{
+	SetActorTransform(ServerState.Transform);
+	Velocity = ServerState.Velocity;
+}
+
+// Server - Validate a Move command
+bool AGoKart::Server_Move_Validate(FGoKartMove Move) 
+{
+	return true; // FMath::Abs(Move.Throttle) <= 1 && FMath::Abs(Move.SteeringThrow) <= 1;
+}
+
+// Server - Perform a Move command (extract data for processing in Tick())
+void AGoKart::Server_Move_Implementation(FGoKartMove Move) 
+{
+	Throttle = Move.Throttle;
+	SteeringThrow = Move.SteeringThrow;
+	// TODO: ServerDeltaTime = Move.DeltaTime;
+}
+
 void AGoKart::MoveForward(float Val) 
 {
 	Throttle = Val;
-	Server_MoveForward(Val);	
-}
-void AGoKart::Server_MoveForward_Implementation(float Val) 
-{
-	Throttle = Val;
-}
-bool AGoKart::Server_MoveForward_Validate(float Val) 
-{
-	return FMath::Abs(Val) <= 1;
 }
 
 void AGoKart::MoveRight(float Val) 
 {
 	SteeringThrow = Val;
-	Server_MoveRight(Val);
-}
-void AGoKart::Server_MoveRight_Implementation(float Val) 
-{
-	SteeringThrow = Val;
-}
-bool AGoKart::Server_MoveRight_Validate(float Val) 
-{
-	return FMath::Abs(Val) <= 1;
 }
 
 FString AGoKart::GetEnumText(ENetRole ActorRole) 

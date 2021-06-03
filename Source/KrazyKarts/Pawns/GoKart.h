@@ -24,9 +24,8 @@ struct FGoKartState
 {
 	GENERATED_USTRUCT_BODY()
 
-	// The move that produced this state
 	UPROPERTY()
-	FGoKartMove LastMove;
+	FGoKartMove LastMove;	// The move that produced this state
 	UPROPERTY()
 	FTransform Transform;
 	UPROPERTY()
@@ -44,10 +43,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_MoveForward(float Val);
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_MoveRight(float Val);
-	
+	void Server_Move(FGoKartMove Move);
+
 	void MoveForward(float Val);
 	void MoveRight(float Val);
 
@@ -71,17 +68,18 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MinTurningRadius = 10;
 
-	UPROPERTY(ReplicatedUsing=OnRep_ReplicatedTransform)	
-	FTransform ReplicatedTransform;
-	UPROPERTY(Replicated)	
-	FVector Velocity;
+	UPROPERTY(ReplicatedUsing=OnRep_ServerState)	
+	FGoKartState ServerState;
+
 	UPROPERTY(Replicated)	
 	float Throttle = 0;
 	UPROPERTY(Replicated)	
 	float SteeringThrow = 0;
 
+	FVector Velocity;
+
 	UFUNCTION()
-	void OnRep_ReplicatedTransform();
+	void OnRep_ServerState();
 
 	void ApplyRotation(float DeltaTime);
 	FVector CalculateAirResistance();
