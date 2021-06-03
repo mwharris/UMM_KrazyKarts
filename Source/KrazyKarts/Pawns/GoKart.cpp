@@ -22,8 +22,6 @@ void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGoKart, ServerState);
-    DOREPLIFETIME(AGoKart, Throttle);
-    DOREPLIFETIME(AGoKart, SteeringThrow);
 }
 
 void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -36,47 +34,48 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// Client-only - Send Move command to Server
+	// If this instance is a Locally Controller player...
 	if (IsLocallyControlled()) 
 	{
+		// Create a Move command for simulation
 		FGoKartMove CurrentMove;
 		CurrentMove.Throttle = Throttle;
 		CurrentMove.SteeringThrow = SteeringThrow;
 		CurrentMove.DeltaTime = DeltaTime;
-		// TODO: CurrentMove.Timestamp = FDateTime::Now();
+		// Client - Tell the Server to simulate our Move
 		Server_Move(CurrentMove);
+		// Simulate our own move (Server & Client)
+		SimulateMove(CurrentMove);
 	}
+	// Server/Client - Simulate our Move
+	// Display our replication Role for testing purposes
+	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
+}
+
+void AGoKart::SimulateMove(FGoKartMove Move) 
+{
 	// Create our "driving force" by taking our input * driving force * forward
-	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+	FVector Force = GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
 	// Calculate and apply air resistance to our driving force
 	Force += CalculateAirResistance();
 	Force += CalculateRollingResistance();
 	// Find Acceleration using F = M/A
 	FVector Acceleration = Force / Mass;
 	// Find Velocity based on our Acceleration and time traveled Dv = a * Dt
-	Velocity += Acceleration * DeltaTime;
+	Velocity += Acceleration * Move.DeltaTime;
 	// Perform movement and rotations
-	UpdateLocationViaVelocity(DeltaTime);
-	ApplyRotation(DeltaTime);
-	// If we're the Server - update ServerState to send to Clients
-	if (HasAuthority()) 
-	{
-		ServerState.Transform = GetActorTransform();
-		ServerState.Velocity = Velocity;
-		// TODO: ServerState.LastMove = ?;
-	}
-	// Display our replication Role for testing purposes
-	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
+	UpdateLocationViaVelocity(Move.DeltaTime);
+	ApplyRotation(Move.DeltaTime, Move.SteeringThrow);
 }
 
-void AGoKart::ApplyRotation(float DeltaTime) 
+void AGoKart::ApplyRotation(float DeltaTime, float MoveSteeringThrow) 
 {
 	// dX - change in location along our turning circle over time
 	float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), Velocity) * DeltaTime;
 	// dTheta = dX / R (change in angle around the circle over time)
 	float dTheta = DeltaLocation / MinTurningRadius;
 	// Rotation Angle (radians) = dTheta * User Input
-	float RotationAngleRadians = dTheta * SteeringThrow;
+	float RotationAngleRadians = dTheta * MoveSteeringThrow;
 	// Build an FQuat for our rotation about the Up vector
 	FQuat RotationDelta(GetActorUpVector(), RotationAngleRadians);
 	// Rotate our Velocity vector by our rotation
@@ -132,9 +131,10 @@ bool AGoKart::Server_Move_Validate(FGoKartMove Move)
 // Server - Perform a Move command (extract data for processing in Tick())
 void AGoKart::Server_Move_Implementation(FGoKartMove Move) 
 {
-	Throttle = Move.Throttle;
-	SteeringThrow = Move.SteeringThrow;
-	// TODO: ServerDeltaTime = Move.DeltaTime;
+	SimulateMove(Move);
+	ServerState.LastMove = Move;
+	ServerState.Transform = GetActorTransform();
+	ServerState.Velocity = Velocity;
 }
 
 void AGoKart::MoveForward(float Val) 

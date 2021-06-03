@@ -71,17 +71,15 @@ private:
 	UPROPERTY(ReplicatedUsing=OnRep_ServerState)	
 	FGoKartState ServerState;
 
-	UPROPERTY(Replicated)	
 	float Throttle = 0;
-	UPROPERTY(Replicated)	
 	float SteeringThrow = 0;
-
 	FVector Velocity;
 
 	UFUNCTION()
 	void OnRep_ServerState();
 
-	void ApplyRotation(float DeltaTime);
+	void SimulateMove(FGoKartMove Move);
+	void ApplyRotation(float DeltaTime, float MoveSteeringThrow);
 	FVector CalculateAirResistance();
 	FVector CalculateRollingResistance();
 	void UpdateLocationViaVelocity(float DeltaTime);
