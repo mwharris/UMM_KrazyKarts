@@ -74,6 +74,7 @@ private:
 	float Throttle = 0;
 	float SteeringThrow = 0;
 	FVector Velocity;
+	TArray<FGoKartMove> UnacknowledgedMoves;
 
 	UFUNCTION()
 	void OnRep_ServerState();
@@ -83,6 +84,8 @@ private:
 	FVector CalculateAirResistance();
 	FVector CalculateRollingResistance();
 	void UpdateLocationViaVelocity(float DeltaTime);
+	void ClearAcknowledgedMoves(FGoKartMove LastMove);
+	FGoKartMove CreateMove(float DeltaTime);
 	FString GetEnumText(ENetRole Role);
 
 };

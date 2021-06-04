@@ -1,6 +1,8 @@
 #include "KrazyKarts/Pawns/GoKart.h"
-#include "Engine/World.h"
+#include "Containers/Array.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
 
 AGoKart::AGoKart()
@@ -38,10 +40,13 @@ void AGoKart::Tick(float DeltaTime)
 	if (IsLocallyControlled()) 
 	{
 		// Create a Move command for simulation
-		FGoKartMove CurrentMove;
-		CurrentMove.Throttle = Throttle;
-		CurrentMove.SteeringThrow = SteeringThrow;
-		CurrentMove.DeltaTime = DeltaTime;
+		FGoKartMove CurrentMove = CreateMove(DeltaTime);
+		// Server doesn't need to maintain a Move list
+		if (!HasAuthority())
+		{
+			UnacknowledgedMoves.Add(CurrentMove);
+			UE_LOG(LogTemp, Warning, TEXT("Queue Length: %d"), UnacknowledgedMoves.Num());
+		}
 		// Client - Tell the Server to simulate our Move
 		Server_Move(CurrentMove);
 		// Simulate our own move (Server & Client)
@@ -120,6 +125,7 @@ void AGoKart::OnRep_ServerState()
 {
 	SetActorTransform(ServerState.Transform);
 	Velocity = ServerState.Velocity;
+	ClearAcknowledgedMoves(ServerState.LastMove);
 }
 
 // Server - Validate a Move command
@@ -145,6 +151,23 @@ void AGoKart::MoveForward(float Val)
 void AGoKart::MoveRight(float Val) 
 {
 	SteeringThrow = Val;
+}
+
+void AGoKart::ClearAcknowledgedMoves(FGoKartMove LastMove) 
+{
+	UnacknowledgedMoves.RemoveAll([&](const FGoKartMove& Move) {
+		return Move.Timestamp <= LastMove.Timestamp;
+	});
+}
+
+FGoKartMove AGoKart::CreateMove(float DeltaTime) 
+{
+	FGoKartMove CurrentMove;
+	CurrentMove.Throttle = Throttle;
+	CurrentMove.SteeringThrow = SteeringThrow;
+	CurrentMove.DeltaTime = DeltaTime;
+	CurrentMove.Timestamp = GetWorld()->GetTimeSeconds();
+	return CurrentMove;
 }
 
 FString AGoKart::GetEnumText(ENetRole ActorRole) 
