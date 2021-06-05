@@ -79,7 +79,7 @@ private:
 	UFUNCTION()
 	void OnRep_ServerState();
 
-	void SimulateMove(FGoKartMove Move);
+	void SimulateMove(const FGoKartMove& Move);
 	void ApplyRotation(float DeltaTime, float MoveSteeringThrow);
 	FVector CalculateAirResistance();
 	FVector CalculateRollingResistance();

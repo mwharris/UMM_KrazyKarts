@@ -36,28 +36,36 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// If this instance is a Locally Controller player...
-	if (IsLocallyControlled()) 
+	// Autonomous proxy - Clients controlling pawn
+	if (GetLocalRole() == ROLE_AutonomousProxy) 
 	{
-		// Create a Move command for simulation
+		// Create a Move command
 		FGoKartMove CurrentMove = CreateMove(DeltaTime);
-		// Server doesn't need to maintain a Move list
-		if (!HasAuthority())
-		{
-			UnacknowledgedMoves.Add(CurrentMove);
-			UE_LOG(LogTemp, Warning, TEXT("Queue Length: %d"), UnacknowledgedMoves.Num());
-		}
-		// Client - Tell the Server to simulate our Move
+		// Add it to a list of moves that haven't yet been acknowledged by the Server
+		UnacknowledgedMoves.Add(CurrentMove);
+		// RPC to tell the Server we're moving
 		Server_Move(CurrentMove);
-		// Simulate our own move (Server & Client)
+		// Simulate our movement locally
 		SimulateMove(CurrentMove);
 	}
-	// Server/Client - Simulate our Move
+	// Simulated proxy - some other connection's pawn
+	else if (GetLocalRole() == ROLE_SimulatedProxy) 
+	{
+		SimulateMove(ServerState.LastMove);
+	}
+	// Server controlling it's own pawn
+	else if (GetLocalRole() == ROLE_Authority && IsLocallyControlled()) 
+	{
+		// Create a Move command
+		FGoKartMove CurrentMove = CreateMove(DeltaTime);
+		// Simulate our movement locally
+		Server_Move(CurrentMove);
+	}
 	// Display our replication Role for testing purposes
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
 }
 
-void AGoKart::SimulateMove(FGoKartMove Move) 
+void AGoKart::SimulateMove(const FGoKartMove& Move) 
 {
 	// Create our "driving force" by taking our input * driving force * forward
 	FVector Force = GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
@@ -120,12 +128,19 @@ FVector AGoKart::CalculateRollingResistance()
 	return -Velocity.GetSafeNormal() * RollingResistanceCoefficient * NormalForce;
 }
 
-// Client - set our Transform and Velocity from Server response
+// Client - handle Server response
 void AGoKart::OnRep_ServerState() 
 {
+	// Set out Transform (position/rotation) and Velocity
 	SetActorTransform(ServerState.Transform);
 	Velocity = ServerState.Velocity;
+	// Clear any moves from our queue that have now been acknowledged
 	ClearAcknowledgedMoves(ServerState.LastMove);
+	// Replay/simulate the moves that are still not acknowledged in order to sync up with the Server
+	for (const FGoKartMove& UnacknowledgedMove : UnacknowledgedMoves) 
+	{
+		SimulateMove(UnacknowledgedMove);
+	}
 }
 
 // Server - Validate a Move command
