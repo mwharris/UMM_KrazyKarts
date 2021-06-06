@@ -26,7 +26,7 @@ class KRAZYKARTS_API UGoKartMovementComponent : public UActorComponent
 
 public:	
 	UGoKartMovementComponent();
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	void DoTick(float DeltaTime);
 	void SimulateMove(const FGoKartMove& Move);
 
 	FGoKartMove& GetLastMove();

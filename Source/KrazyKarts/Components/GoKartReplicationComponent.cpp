@@ -4,7 +4,7 @@
 
 UGoKartReplicationComponent::UGoKartReplicationComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicated(true);
 }
 
@@ -24,9 +24,8 @@ void UGoKartReplicationComponent::GetLifetimeReplicatedProps(TArray<FLifetimePro
     DOREPLIFETIME(UGoKartReplicationComponent, ServerState);
 }
 
-void UGoKartReplicationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) 
+void UGoKartReplicationComponent::DoTick(float DeltaTime) 
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	// Get our owning Pawn for a check later
 	auto ControlledPawn = Cast<APawn>(GetOwner());
 	if (MovementComponent == nullptr || ControlledPawn == nullptr) return;

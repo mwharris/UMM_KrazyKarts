@@ -2,7 +2,7 @@
 
 UGoKartMovementComponent::UGoKartMovementComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UGoKartMovementComponent::BeginPlay()
@@ -15,9 +15,8 @@ void UGoKartMovementComponent::BeginPlay()
 	}
 }
 
-void UGoKartMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) 
+void UGoKartMovementComponent::DoTick(float DeltaTime) 
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	// Gather information about our Role and RemoteRole
 	auto ControlledPawn = Cast<APawn>(GetOwner());
 	bool ServerControlled = GetOwnerRole() == ROLE_Authority && ControlledPawn != nullptr && ControlledPawn->IsLocallyControlled();

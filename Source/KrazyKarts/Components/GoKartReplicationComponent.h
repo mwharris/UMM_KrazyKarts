@@ -28,7 +28,7 @@ public:
 	void Server_Move(FGoKartMove Move);
 	
 	UGoKartReplicationComponent();
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	void DoTick(float DeltaTime);
 
 protected:
 	virtual void BeginPlay() override;

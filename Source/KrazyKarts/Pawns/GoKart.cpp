@@ -33,7 +33,9 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+	// Tick both of our components
+	MovementComponent->DoTick(DeltaTime);
+	ReplicationComponent->DoTick(DeltaTime);
 	// Display our replication Role for testing purposes
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
 }
