@@ -21,10 +21,6 @@
 		{
 			"Name": "RawInput",
 			"Enabled": true
-		},
-		{
-			"Name": "FMODStudio",
-			"Enabled": true
 		}
 	]
 }
