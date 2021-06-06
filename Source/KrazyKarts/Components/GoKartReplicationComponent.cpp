@@ -64,10 +64,6 @@ void UGoKartReplicationComponent::ClientTick(float DeltaTime)
 	// Lerp from start location to the latest ServerState location, over the time between our last 2 updates
 	FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, Alpha);
 	GetOwner()->SetActorLocation(NewLocation);
-	/*
-	// Manually simulate the move we were sent
-	MovementComponent->SimulateMove(ServerState.LastMove);
-	*/
 }
 
 // Client - handle Server response
