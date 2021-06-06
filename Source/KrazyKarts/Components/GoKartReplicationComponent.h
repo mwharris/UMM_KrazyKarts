@@ -40,11 +40,17 @@ private:
 	UGoKartMovementComponent* MovementComponent;
 
 	TArray<FGoKartMove> UnacknowledgedMoves;
+	float ClientTimeSinceLastUpdate = 0;
+	float ClientTimeBetweenUpdates = 0;
+	FVector ClientInterpStartLocation;
 	
 	UFUNCTION()
 	void OnRep_ServerState();
-
-	void ClearAcknowledgedMoves(FGoKartMove LastMove);
+	
+	void ClientTick(float DeltaTime);
+	void OnRepServerState_SimulatedProxy();
+	void OnRepServerState_AutonomousProxy();
 	void UpdateServerState(const FGoKartMove& Move);
+	void ClearAcknowledgedMoves(FGoKartMove LastMove);
 		
 };

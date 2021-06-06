@@ -48,16 +48,52 @@ void UGoKartReplicationComponent::DoTick(float DeltaTime)
 	// Simulated proxy (another connection's pawn)
 	else if (GetOwnerRole() == ROLE_SimulatedProxy) 
 	{
-		// Manually simulate the move we were sent
-		MovementComponent->SimulateMove(ServerState.LastMove);
+		ClientTick(DeltaTime);
 	}
+}
+
+void UGoKartReplicationComponent::ClientTick(float DeltaTime) 
+{
+	ClientTimeSinceLastUpdate += DeltaTime;
+	// Safety check to ensure we're not using extremely small floating point numbers
+	if (ClientTimeBetweenUpdates <= KINDA_SMALL_NUMBER) return; 
+	// Build of parameters for our Lerp
+	FVector StartLocation = ClientInterpStartLocation;
+	FVector TargetLocation = ServerState.Transform.GetLocation();
+	float Alpha = ClientTimeSinceLastUpdate / ClientTimeBetweenUpdates;
+	// Lerp from start location to the latest ServerState location, over the time between our last 2 updates
+	FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, Alpha);
+	GetOwner()->SetActorLocation(NewLocation);
+	/*
+	// Manually simulate the move we were sent
+	MovementComponent->SimulateMove(ServerState.LastMove);
+	*/
 }
 
 // Client - handle Server response
 void UGoKartReplicationComponent::OnRep_ServerState() 
 {
+	if (GetOwnerRole() == ROLE_AutonomousProxy) 
+	{
+		OnRepServerState_AutonomousProxy();
+	}
+	else if (GetOwnerRole() == ROLE_SimulatedProxy) 
+	{
+		OnRepServerState_SimulatedProxy();
+	}
+}
+
+void UGoKartReplicationComponent::OnRepServerState_SimulatedProxy() 
+{
+	ClientInterpStartLocation = GetOwner()->GetActorLocation();
+	ClientTimeBetweenUpdates = ClientTimeSinceLastUpdate;
+	ClientTimeSinceLastUpdate = 0;
+}
+
+void UGoKartReplicationComponent::OnRepServerState_AutonomousProxy() 
+{
 	if (MovementComponent == nullptr) return;
-	// Set out Transform (position/rotation) and Velocity
+	// Set our Transform (position/rotation) and Velocity
 	GetOwner()->SetActorTransform(ServerState.Transform);
 	MovementComponent->SetVelocity(ServerState.Velocity);
 	// Clear any moves from our queue that have now been acknowledged
