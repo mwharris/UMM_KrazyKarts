@@ -30,30 +30,27 @@ void UGoKartReplicationComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	// Get our owning Pawn for a check later
 	auto ControlledPawn = Cast<APawn>(GetOwner());
 	if (MovementComponent == nullptr || ControlledPawn == nullptr) return;
+	// Get our latest local Move from the Movement Component
+	FGoKartMove LastMove = MovementComponent->GetLastMove();
 	// Autonomous proxy - Clients controlling pawn
 	if (GetOwnerRole() == ROLE_AutonomousProxy) 
 	{
-		// Create a Move command
-		FGoKartMove CurrentMove = MovementComponent->CreateMove(DeltaTime);
-		// Add it to a list of moves that haven't yet been acknowledged by the Server
-		UnacknowledgedMoves.Add(CurrentMove);
+		// Add our latest move to a list of moves that haven't yet been acknowledged by the Server
+		UnacknowledgedMoves.Add(LastMove);
 		// RPC to tell the Server we're moving
-		Server_Move(CurrentMove);
-		// Simulate our movement locally
-		MovementComponent->SimulateMove(CurrentMove);
-	}
-	// Simulated proxy - some other connection's pawn
-	else if (GetOwnerRole() == ROLE_SimulatedProxy) 
-	{
-		MovementComponent->SimulateMove(ServerState.LastMove);
+		Server_Move(LastMove);
 	}
 	// Server controlling it's own pawn
 	else if (GetOwnerRole() == ROLE_Authority && ControlledPawn->IsLocallyControlled()) 
 	{
-		// Create a Move command
-		FGoKartMove CurrentMove = MovementComponent->CreateMove(DeltaTime);
-		// Simulate our movement locally
-		Server_Move(CurrentMove);
+		// Simply update our ServerState - our local movement has already simulated via Movement Component
+		UpdateServerState(LastMove);
+	}
+	// Simulated proxy (another connection's pawn)
+	else if (GetOwnerRole() == ROLE_SimulatedProxy) 
+	{
+		// Manually simulate the move we were sent
+		MovementComponent->SimulateMove(ServerState.LastMove);
 	}
 }
 
@@ -84,9 +81,7 @@ void UGoKartReplicationComponent::Server_Move_Implementation(FGoKartMove Move)
 {
 	if (MovementComponent == nullptr) return;
 	MovementComponent->SimulateMove(Move);
-	ServerState.LastMove = Move;
-	ServerState.Transform = GetOwner()->GetActorTransform();
-	ServerState.Velocity = MovementComponent->GetVelocity();
+	UpdateServerState(Move);
 }
 
 void UGoKartReplicationComponent::ClearAcknowledgedMoves(FGoKartMove LastMove) 
@@ -94,4 +89,11 @@ void UGoKartReplicationComponent::ClearAcknowledgedMoves(FGoKartMove LastMove)
 	UnacknowledgedMoves.RemoveAll([&](const FGoKartMove& Move) {
 		return Move.Timestamp <= LastMove.Timestamp;
 	});
+}
+
+void UGoKartReplicationComponent::UpdateServerState(const FGoKartMove& Move) 
+{
+	ServerState.LastMove = Move;
+	ServerState.Transform = GetOwner()->GetActorTransform();
+	ServerState.Velocity = MovementComponent->GetVelocity();
 }

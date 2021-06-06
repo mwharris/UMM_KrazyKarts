@@ -2,22 +2,41 @@
 
 UGoKartMovementComponent::UGoKartMovementComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UGoKartMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	// Disable Tick altogether if we're a SimulatedProxy - no need to simulate local moves
+	if (GetOwnerRole() == ROLE_SimulatedProxy) 
+	{
+		SetComponentTickEnabled(false);
+	}
+}
+
+void UGoKartMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) 
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	// Gather information about our Role and RemoteRole
+	auto ControlledPawn = Cast<APawn>(GetOwner());
+	bool ServerControlled = GetOwnerRole() == ROLE_Authority && ControlledPawn != nullptr && ControlledPawn->IsLocallyControlled();
+	// Simulate our movement locally if we are in control of our Owner's Pawn
+	if (GetOwnerRole() == ROLE_AutonomousProxy || ServerControlled)
+	{
+		LastMove = CreateMove(DeltaTime);
+		SimulateMove(LastMove);
+	}
 }
 
 FGoKartMove UGoKartMovementComponent::CreateMove(float DeltaTime) 
 {
-	FGoKartMove CurrentMove;
-	CurrentMove.Throttle = Throttle;
-	CurrentMove.SteeringThrow = SteeringThrow;
-	CurrentMove.DeltaTime = DeltaTime;
-	CurrentMove.Timestamp = GetWorld()->GetTimeSeconds();
-	return CurrentMove;
+	FGoKartMove NewMove;
+	NewMove.Throttle = Throttle;
+	NewMove.SteeringThrow = SteeringThrow;
+	NewMove.DeltaTime = DeltaTime;
+	NewMove.Timestamp = GetWorld()->GetTimeSeconds();
+	return NewMove;
 }
 
 void UGoKartMovementComponent::SimulateMove(const FGoKartMove& Move) 
@@ -101,4 +120,9 @@ void UGoKartMovementComponent::SetThrottle(float Value)
 void UGoKartMovementComponent::SetSteeringThrow(float Value) 
 {
 	SteeringThrow = Value;
+}
+
+FGoKartMove& UGoKartMovementComponent::GetLastMove() 
+{
+	return LastMove;
 }

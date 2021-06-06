@@ -45,5 +45,6 @@ private:
 	void OnRep_ServerState();
 
 	void ClearAcknowledgedMoves(FGoKartMove LastMove);
+	void UpdateServerState(const FGoKartMove& Move);
 		
 };
