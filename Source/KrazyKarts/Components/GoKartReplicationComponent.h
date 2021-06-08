@@ -42,7 +42,7 @@ private:
 	TArray<FGoKartMove> UnacknowledgedMoves;
 	float ClientTimeSinceLastUpdate = 0;
 	float ClientTimeBetweenUpdates = 0;
-	FVector ClientInterpStartLocation;
+	FTransform ClientStartTransform;
 	
 	UFUNCTION()
 	void OnRep_ServerState();

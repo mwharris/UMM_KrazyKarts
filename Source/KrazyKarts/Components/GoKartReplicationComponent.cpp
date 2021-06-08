@@ -57,13 +57,15 @@ void UGoKartReplicationComponent::ClientTick(float DeltaTime)
 	ClientTimeSinceLastUpdate += DeltaTime;
 	// Safety check to ensure we're not using extremely small floating point numbers
 	if (ClientTimeBetweenUpdates <= KINDA_SMALL_NUMBER) return; 
-	// Build of parameters for our Lerp
-	FVector StartLocation = ClientInterpStartLocation;
+	// Lerp from Start Location to the latest ServerState Location, over the time between our last 2 updates
+	FVector StartLocation = ClientStartTransform.GetLocation();
 	FVector TargetLocation = ServerState.Transform.GetLocation();
 	float Alpha = ClientTimeSinceLastUpdate / ClientTimeBetweenUpdates;
-	// Lerp from start location to the latest ServerState location, over the time between our last 2 updates
-	FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, Alpha);
-	GetOwner()->SetActorLocation(NewLocation);
+	GetOwner()->SetActorLocation(FMath::LerpStable(StartLocation, TargetLocation, Alpha));
+	// Slerp from Start Rotation to the latest ServerState Rotation, over the time between our last 2 updates
+	FQuat StartRotation = ClientStartTransform.GetRotation();
+	FQuat TargetRotation = ServerState.Transform.GetRotation();
+	GetOwner()->SetActorRotation(FQuat::Slerp(StartRotation, TargetRotation, Alpha));
 }
 
 // Client - handle Server response
@@ -81,7 +83,7 @@ void UGoKartReplicationComponent::OnRep_ServerState()
 
 void UGoKartReplicationComponent::OnRepServerState_SimulatedProxy() 
 {
-	ClientInterpStartLocation = GetOwner()->GetActorLocation();
+	ClientStartTransform = GetOwner()->GetActorTransform();
 	ClientTimeBetweenUpdates = ClientTimeSinceLastUpdate;
 	ClientTimeSinceLastUpdate = 0;
 }
