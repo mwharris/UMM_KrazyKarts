@@ -156,13 +156,16 @@ void UGoKartReplicationComponent::OnRepServerState_AutonomousProxy()
 // Server - Validate a Move command
 bool UGoKartReplicationComponent::Server_Move_Validate(FGoKartMove Move) 
 {
-	return true; // FMath::Abs(Move.Throttle) <= 1 && FMath::Abs(Move.SteeringThrow) <= 1;
+	float ClientProposedTime = ClientTime + Move.DeltaTime;
+	bool ClientTimeValid = GetWorld()->TimeSeconds > ClientProposedTime; 
+	return ClientTimeValid && Move.IsValid();
 }
 
 // Server - Perform a Move command (extract data for processing in Tick())
 void UGoKartReplicationComponent::Server_Move_Implementation(FGoKartMove Move) 
 {
 	if (MovementComponent == nullptr) return;
+	ClientTime += Move.DeltaTime;
 	MovementComponent->SimulateMove(Move);
 	UpdateServerState(Move);
 }

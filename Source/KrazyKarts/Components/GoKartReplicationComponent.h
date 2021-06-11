@@ -60,6 +60,8 @@ private:
 	FTransform ClientStartTransform;
 	FVector ClientStartVelocity;
 	
+	float ClientTime = 0;
+	
 	UFUNCTION()
 	void OnRep_ServerState();
 	UFUNCTION(BlueprintCallable)
