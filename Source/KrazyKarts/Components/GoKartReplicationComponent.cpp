@@ -83,7 +83,10 @@ FHermiteCubicSpline UGoKartReplicationComponent::CreateSpline()
 void UGoKartReplicationComponent::InterpolateLocation(const FHermiteCubicSpline& Spline, float Alpha) 
 {
 	FVector NewLocation = Spline.InterpolateLocation(Alpha);
-	GetOwner()->SetActorLocation(NewLocation);
+	if (MeshOffsetRoot != nullptr) 
+	{
+		MeshOffsetRoot->SetWorldLocation(NewLocation);
+	}
 }
 
 void UGoKartReplicationComponent::InterpolateVelocity(const FHermiteCubicSpline& Spline, float Alpha) 
@@ -102,7 +105,11 @@ void UGoKartReplicationComponent::InterpolateRotation(float Alpha)
 {
 	FQuat StartRotation = ClientStartTransform.GetRotation();
 	FQuat TargetRotation = ServerState.Transform.GetRotation();
-	GetOwner()->SetActorRotation(FQuat::Slerp(StartRotation, TargetRotation, Alpha));
+	FQuat NewRotation = FQuat::Slerp(StartRotation, TargetRotation, Alpha);
+	if (MeshOffsetRoot != nullptr) 
+	{
+		MeshOffsetRoot->SetWorldRotation(NewRotation);
+	}
 }
 
 // Client - handle Server response
@@ -121,10 +128,14 @@ void UGoKartReplicationComponent::OnRep_ServerState()
 void UGoKartReplicationComponent::OnRepServerState_SimulatedProxy() 
 {
 	if (MovementComponent == nullptr) return;
-	ClientStartTransform = GetOwner()->GetActorTransform();
+	if (MeshOffsetRoot != nullptr) 
+	{
+		ClientStartTransform = MeshOffsetRoot->GetComponentTransform();
+	}
 	ClientStartVelocity = MovementComponent->GetVelocity();
 	ClientTimeBetweenUpdates = ClientTimeSinceLastUpdate;
 	ClientTimeSinceLastUpdate = 0;
+	GetOwner()->SetActorTransform(ServerState.Transform);
 }
 
 void UGoKartReplicationComponent::OnRepServerState_AutonomousProxy() 
@@ -166,6 +177,9 @@ void UGoKartReplicationComponent::ClearAcknowledgedMoves(FGoKartMove LastMove)
 void UGoKartReplicationComponent::UpdateServerState(const FGoKartMove& Move) 
 {
 	ServerState.LastMove = Move;
-	ServerState.Transform = GetOwner()->GetActorTransform();
+	if (MeshOffsetRoot != nullptr) 
+	{
+		ServerState.Transform = MeshOffsetRoot->GetComponentTransform();
+	}
 	ServerState.Velocity = MovementComponent->GetVelocity();
 }

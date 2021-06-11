@@ -51,6 +51,8 @@ private:
 	FGoKartState ServerState;
 	UPROPERTY()
 	UGoKartMovementComponent* MovementComponent;
+	UPROPERTY()
+	USceneComponent* MeshOffsetRoot;
 
 	TArray<FGoKartMove> UnacknowledgedMoves;
 	float ClientTimeSinceLastUpdate = 0;
@@ -60,6 +62,11 @@ private:
 	
 	UFUNCTION()
 	void OnRep_ServerState();
+	UFUNCTION(BlueprintCallable)
+	void SetMeshOffsetRoot(USceneComponent* Val)
+	{
+		MeshOffsetRoot = Val;
+	}
 	
 	void ClientTick(float DeltaTime);
 	FHermiteCubicSpline CreateSpline();
